@@ -21,14 +21,21 @@ Cross-skill combos (offline scan→store→sync, version-gated push identity, ke
 
 ## Install
 
-> Install commands below are verified from a clean state.
+> Flags below match vercel-labs `skills` CLI v1.5.26; the list command is verified live against this repo.
 
 Using the [vercel-labs `skills` CLI](https://github.com/vercel-labs/skills) (installs into every major coding agent at once):
 
 ```bash
-npx -y skills add dennisrongo/median-co-bridge-skills -l        # list skills first
-npx -y skills add dennisrongo/median-co-bridge-skills -s '*' -y # install all skills
+npx -y skills add dennisrongo/median-co-bridge-skills -l             # list skills first
+npx -y skills add dennisrongo/median-co-bridge-skills -s '*' -y      # install all skills (project scope)
+npx -y skills add dennisrongo/median-co-bridge-skills -s '*' -g -y   # install all skills globally (~/<agent>/skills)
 ```
+
+> **If `npx skills` launches a different CLI** — some other globally installed package whose binary is also named `skills` — force the registry package:
+>
+> ```bash
+> npx -y --package skills skills add dennisrongo/median-co-bridge-skills -s '*' -g -y
+> ```
 
 Or grab a single skill manually — each `skills/<name>/SKILL.md` is self-contained.
 
