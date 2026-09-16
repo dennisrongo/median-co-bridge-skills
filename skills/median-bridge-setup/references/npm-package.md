@@ -20,7 +20,7 @@ Script tag alternative:
 <script type="text/javascript" src="https://unpkg.com/median-js-bridge@latest/dist/median.min.js"></script>
 ```
 
-> Avoid `@latest` in production — pin a version (e.g. `@1.12.3`) and upgrade deliberately; `@latest` gets every breaking change instantly.
+> Avoid `@latest` in production — pin a version (e.g. `@2.21.0`) and upgrade deliberately; `@latest` gets every breaking change instantly.
 
 Links: https://github.com/gonativeio/median-javascript-bridge#readme · https://www.npmjs.com/package/median-js-bridge
 

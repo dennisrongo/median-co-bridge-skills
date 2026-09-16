@@ -1,6 +1,6 @@
 # Median Navigation & UI — Full API Reference
 
-Verbatim API detail from docs.median.co (fetched 2026-08-20). Nothing invented; snippets reproduced exactly from the docs.
+Verbatim API detail from docs.median.co (fetched 2026-08-20; Auto New Windows, link handling, and context-menu sections fetched 2026-09-15). Nothing invented; snippets reproduced exactly from the docs.
 
 ---
 
@@ -110,6 +110,8 @@ Add a `regex` field per tab item in the tab-menu JSON; the tab shows active when
 }
 ```
 
+*(docs show `"regex": "https://domain\\.domain/account.*"` against `"url": "https://domain.com/account"` — the `domain\.domain` host looks like an upstream docs artifact; preserved verbatim)*
+
 Best practices (docs): JS Bridge selection when the site controls nav state; URL rules when the active tab should follow the page URL; use specific regexes per tab to avoid conflicting active states; test on both iOS and Android; in SPAs, update tab selection on route change since no full page load occurs.
 
 Source: https://docs.median.co/docs/selecting-tabs
@@ -209,6 +211,217 @@ if (navigator.userAgent.indexOf('median') > -1) {
 Note: the anchor example in the docs uses the `gonative.` prefix — both prefixes work on Median-updated apps.
 
 Source: https://docs.median.co/docs/dynamic-titles
+
+---
+
+## Auto New Windows — median.navigationLevels.set
+
+Multi-level navigation: pages or groups of pages assigned to a higher Level open in a new window within the app (Android Activity or iOS ViewController) when a user clicks a link to them. The top navigation bar shows a "< Back" button on the left to return to the lower-level page even if the user has navigated elsewhere in the current level; it shows the page name in the center, changeable via Dynamic Titles.
+
+Docs use case: a news app with categories such as "Local News", "International", "Business", "Sports", "Lifestyle" defined as level 2 — users open and browse articles in that level and press "< Back" to return to the front page.
+
+> 🚧 Navigation History (docs): when a page that is assigned a higher level opens in a new window within your app, it will not have the navigation history of the prior page. This means functionality such as swipe gestures will only take the user back to the originally opened URL for that window.
+
+### App Configuration
+
+Whenever a user navigates to a URL that matches a higher level rule, the page will load in a new window (Android Activity or iOS ViewController). Rules are prioritized top to bottom. If no match is found for a link, the link will open in the current level.
+
+> 🚧 Single-Page-App (docs, verbatim): auto new windows will load the new page in a new webview, and requires a full page load. For example, if your site is a single-page-app driven by AJAX, then you may need to force a full page load using something like: `window.location.href = 'https://my-ajax-site/path";` *(mismatched quotes are an upstream docs artifact — preserved verbatim)*
+
+### JavaScript Bridge
+
+A default auto new windows setting can be defined in the App Studio and then overwritten dynamically as required; or the configuration can be left blank in the App Studio and set entirely by the website.
+
+Rules object (verbatim):
+
+```javascript
+var autoNewWindowsRules = {
+    active: true,
+    persist: true,
+    levels: [{
+      regex: '.*median.*',
+      level: 2
+    }, {
+      regex: '.*',
+      level: 1
+    }]
+}
+```
+
+Setting `persist: true` will save the navigation levels for use the next time the app is launched, otherwise, the changes will only take effect for the current app session.
+
+Revert to the appConfig.json definition built into the app (verbatim):
+
+```javascript
+median.navigationLevels.set({persist: true});
+```
+
+### Demo app snippets (verbatim)
+
+```json
+/* Auto New Windows Configuration */
+[
+  {
+    "regex": "https://median.dev/auto-new-windows/index.html/?",
+    "level": 1
+  },
+  {
+    "regex": "https://median.dev/auto-new-windows/contact.html/?",
+    "level": 2
+  },
+  {
+    "regex": "https://median.dev/auto-new-windows/about.html/?",
+    "level": 3
+  }
+]
+```
+
+```javascript
+/* Set Auto New Windows */
+median.navigationLevels.set({
+  active: true,
+  levels: [{
+    regex: "https://median.dev/auto-new-windows/index.html/?",
+    level: 1
+  }, {
+    regex: "https://median.dev/auto-new-windows/contact.html/?",
+    level: 1
+  }, {
+    regex: "https://median.dev/auto-new-windows/about.html/?",
+    level: 2
+  }],
+  persist:true
+});
+```
+
+```javascript
+/* Revert Auto New Windows */
+if (navigator.userAgent.indexOf('median') > -1) {
+  median.navigationLevels.set({ persist: true });
+}
+```
+
+Developer demo: https://median.dev/auto-new-windows/
+Source: https://docs.median.co/docs/auto-new-windows
+
+---
+
+## Link handling — median.window.open / median.internalExternal.set
+
+URLs in your app can be loaded in three ways:
+
+- **Internally** within your app, for a seamless experience with app-optimized web content.
+- Within an **in-app browser** window, for sites that are not ideal inside the main WebView (for example external websites). When the user closes the embedded browser, focus returns to your app.
+- **Externally** in the device default mobile browser or the default app registered for a deep link (for example, Safari, Chrome, Google Maps, or LinkedIn). Users always leave your app when a link opens externally.
+
+On iOS you can set the color of native in-app browser controls from App Studio → Branding.
+
+### In-app browser closed callback (verbatim)
+
+You can detect when a user closes the in-app browser by defining `median_appbrowser_closed`. The app calls this function automatically when the in-app browser closes.
+
+```javascript
+function median_appbrowser_closed() {
+  window.alert("App browser closed!");
+}
+```
+
+### Opening links programmatically — open modes
+
+```javascript
+median.window.open(url, mode);
+// mode = blank (default) | internal | external | appbrowser
+```
+
+- `blank` — New WebView window instance (default when mode is omitted).
+- `internal` — Current WebView window instance.
+- `external` — Mobile browser or the app registered for the URL's deep link.
+- `appbrowser` — In-app browser window.
+
+### Link handling rules
+
+Regular web links open according to the rules defined in your app. The default configuration works for many apps; adjust the rule set as needed.
+
+**Default for "All Other Links" is App Browser** — by default, links to URLs on the same domain as your Website URL open **Internal** in your app. Links on **other** domains open in the **App Browser**. To change that, edit the **All Other Links** rule at the bottom of the Link Behavior rules and set it to **Internal** (everything stays in the main WebView) or **External** (open in the system browser or default app).
+
+**Order matters** — rule matching is evaluated **top to bottom**. Put the **most specific** rules first and the **most general** rules last.
+
+Match types when editing a rule (verbatim):
+
+| Match type | Behavior |
+| --- | --- |
+| **Single Page** | Apply to one specific URL you enter. |
+| **Multiple Pages** | Apply using a URL path prefix. |
+| **All Pages** | Apply the regex across the entire app. |
+| **Custom** | Supply your own regex pattern. |
+
+Toggle **Include Subdomains** to extend the rule to subdomains of the matched domain. To match arbitrary domains with a query flag, use a regex such as `https?:\/\/.*\?external=true` and link to URLs like `https://anysite.com/page?external=true`.
+
+> ❗️ **Regex compatibility warning** (docs): lookahead and lookbehind expressions, including negative variants, are not supported on Android and are only available on iOS 14 and later. Rules using these patterns will silently fail to match on unsupported platforms. Use simple, positive regular expressions to ensure consistent behavior across both platforms.
+
+### Changing rules at runtime (verbatim)
+
+```javascript
+var rulesArray = [
+  {
+    id: 1,
+    regex: "https?://maps\\.google\\.com.*",
+    mode: "external",
+  },
+  {
+    id: 2,
+    regex: "https?://([-\\w]+\\.)*google\\.com/maps/search/.*",
+    mode: "external",
+  },
+  {
+    id: 3,
+    regex: "https?://([-\\w]+\\.)*linkedin\\.com/.*",
+    mode: "external",
+  },
+  {
+    id: 4,
+    regex: "https?://([-\\w]+\\.)*nytimes\\.com/.*",
+    mode: "appbrowser",
+  },
+  {
+    id: 5,
+    regex: "https?://([-\\w]+\\.)*wsj\\.com/.*",
+    mode: "appbrowser",
+  },
+];
+
+median.internalExternal.set({ rules: rulesArray });
+```
+
+Developer demo: https://median.dev/link-handling/
+Source: https://docs.median.co/docs/internal-vs-external-links · https://docs.median.co/docs/link-handling-overview
+
+---
+
+## Context menu — median.contextMenu.setEnabled / setActions
+
+The **context menu** is a floating menu shown when the user **long-presses a link**. You can turn it on or off at runtime and choose which actions appear, using the Median JavaScript Bridge.
+
+Enable or disable (verbatim):
+
+```javascript
+median.contextMenu.setEnabled(true); // or false to disable
+```
+
+Set available actions (verbatim):
+
+```javascript
+// Define which actions appear in the context menu
+median.contextMenu.setActions(["copyLink", "openExternal"]);
+```
+
+Supported actions:
+
+- `copyLink`: Copies the selected link to the clipboard.
+- `openExternal`: Opens the selected link in the device's external browser.
+
+Developer demo: https://median.dev/context-menu/
+Source: https://docs.median.co/docs/internal-vs-external-links
 
 ---
 

@@ -1,6 +1,6 @@
 # Analytics & Attribution — Full API Reference (Median JS Bridge)
 
-All call signatures, parameters, and JSON shapes verbatim from docs.median.co as of 2026-08-20. Doc quirks (e.g. the Adjust `intialize` spelling) are preserved verbatim and flagged.
+All call signatures, parameters, and JSON shapes verbatim from docs.median.co as of 2026-08-20 (Firebase Crashlytics and In-App Purchases sections verified 2026-09-12). Doc quirks (e.g. the Adjust `intialize` spelling) are preserved verbatim and flagged.
 
 ## Adjust
 
@@ -158,9 +158,54 @@ String item_brand; String item_list_name; String item_list_id; double price;
 - Firebase auto-logs screen_view, session_start, first_open_time by default.
 - Demo: https://median.dev/firebase-analytics/
 
-## In-App Purchases (router — APIs live on subpages)
+## Firebase Crashlytics
 
-The `iap` doc page is a router: full StoreKit (Apple) and Google Play Billing support exists for consumables, non-consumables, subscriptions, one-time purchases, but the implementation detail lives on subpages NOT replicated here. Consult them directly:
+Purpose: real-time crash reporting — native crashes, WebView console errors, and (Android only) toast errors, with runtime control via the bridge.
+
+### Setup
+Same gate as Firebase Analytics: register the app in a Firebase project with Crashlytics enabled; upload `google-services.json` (Android) + `GoogleService-Info.plist` (iOS) in App Studio under Build & Deploy > Google Services; enable the plugin in Native Plugins; save + rebuild.
+
+### Call signatures (verbatim)
+```javascript
+// Enable/disable Crashlytics
+median.firebaseCrashlytics.enable(true);
+median.firebaseCrashlytics.enable(false);
+
+// WebView error logging
+median.firebaseCrashlytics.webErrorLogsEnabled(true);
+median.firebaseCrashlytics.webErrorLogsEnabled(false);
+
+// Toast error logging (Android only)
+median.firebaseCrashlytics.toastErrorLogsEnabled(true);
+median.firebaseCrashlytics.toastErrorLogsEnabled(false);
+
+median.firebaseCrashlytics.setUserId("user_123");
+median.firebaseCrashlytics.unsetUserId();
+```
+
+### Parameters (verbatim)
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `enabled` (enable / webErrorLogsEnabled / toastErrorLogsEnabled) | `boolean` | Yes | `true` to enable, `false` to disable |
+| User ID (setUserId) | `string` | Yes | Your user identifier — tracks crash logs per user in Firebase |
+
+### Plugin settings
+- `requestOptIn` — enable/disable the consent prompt for log collection; when true, users see a permission dialog on first app launch after installation
+- `toastErrorLogsEnabled` — Android-only toast error collection (e.g. SSL certificate warnings)
+- `webErrorLogsEnabled` — WebView console error collection
+
+### Gotchas
+- `toastErrorLogsEnabled` applies to Android only — test on an Android build.
+- `setUserId` persists between app launches; cleared only on uninstall/reinstall.
+- Functions undefined or not working → plugin enabled, app rebuilt, Google Services files uploaded, and calls made after the bridge library is ready (`median_library_ready()` / `Median.onReady()`).
+- Demo: https://median.dev/crashlytics
+
+## In-App Purchases
+
+Full StoreKit (Apple) and Google Play Billing support: consumables, non-consumables, subscriptions, one-time purchases. The bridge API — `median.iap.info()` / `median_info_ready`, `median.iap.purchase({ productID, offerToken, previousPurchaseToken, prorationMode/replacementMode })`, `median.iap.purchases()` / `median_iap_purchases`, `median.iap.restorePurchases()` (Apple), `median.iap.manageSubscription({ productID })` / `median.iap.manageAllSubscriptions()` (Google), verification flows, and the Google Billing 4→6 `legacyMode` migration — is documented with full parameter tables and verbatim payloads in `iap.md` (this folder).
+
+Deep detail remains on the official subpages:
 - Apple IAP: https://docs.median.co/docs/apple-iap.md
 - Google IAP: https://docs.median.co/docs/google-iap.md
 - Overview: https://docs.median.co/docs/iap.md
@@ -173,4 +218,7 @@ Apple mandates IAP for digital goods (consumables, non-consumables, non-renewing
 - https://docs.median.co/docs/adjust.md
 - https://docs.median.co/docs/appsflyer.md
 - https://docs.median.co/docs/firebase-analytics.md
+- https://docs.median.co/docs/crashlytics.md
 - https://docs.median.co/docs/iap.md
+- https://docs.median.co/docs/apple-iap.md
+- https://docs.median.co/docs/google-iap.md

@@ -1,18 +1,19 @@
 ---
 name: median-screen-controls
-description: "Control brightness, keep-awake, fullscreen, orientation."
-version: 0.1.0
+description: "Control screen brightness, keep-awake, Android fullscreen, dark/light color scheme, and Android swipe-navigation gestures; orientation is App Studio config only. Use when a task dims or wakes the screen, toggles fullscreen or swipe gestures, or forces dark/light mode inside a Median app."
+version: 0.2.0
 author: Dennis Rongo (dennisrongo), Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
 metadata:
   hermes:
     tags: [Median, JavaScript Bridge, Mobile, WebView]
+  source: https://docs.median.co/docs/device-screen-control
 ---
 
 # Median Screen Controls
 
-Drive the physical screen experience from your web app at runtime: set brightness, keep the screen awake (wake lock), toggle Android fullscreen, force light/dark color scheme, and understand what orientation control is possible (spoiler: it is app-config only — there is no bridge command). These are core JavaScript Bridge APIs; no native plugins beyond the bridge itself.
+Drive the physical screen experience from your web app at runtime: set brightness, keep the screen awake (wake lock), toggle Android fullscreen, force light/dark color scheme, toggle Android swipe-navigation gestures, and understand what orientation control is possible (spoiler: it is app-config only — there is no bridge command). These are core JavaScript Bridge APIs; no native plugins beyond the bridge itself — pinch-to-zoom and pull-to-refresh gesture defaults are App Studio configuration, not bridge calls.
 
 Everything runs inside a Median-built iOS/Android app wrapping your existing website. In a desktop browser the `median` object does not exist; guard calls accordingly.
 
@@ -23,6 +24,8 @@ Reach for this skill when the task involves:
 - Dimming or brightening the screen programmatically (e.g. for a reading or kiosk view), including restoring the previous brightness on navigation
 - Preventing the screen from sleeping during video playback, recipes, workouts, guided flows
 - Hiding Android status/navigation bars for an immersive fullscreen experience — and undoing it on form pages
+- Toggling Android swipe-back/forward navigation gestures at runtime based on the current view
+- Enabling pinch-to-zoom or pull-to-refresh — both are App Studio configuration (pinch-to-zoom is disabled by default), not bridge calls
 - Locking orientation (portrait/landscape) — must be done in App Studio configuration, not JS
 - Forcing light/dark scheme for native UI menus and driving web dark mode via `prefers-color-scheme`
 
@@ -38,6 +41,7 @@ Don't use for:
 - No additional native plugins required for any API in this skill.
 - Defaults settable in App configuration on the **Interface** tab: keep-screen-on default mode, Android fullscreen default mode, and iOS landscape fullscreen (hiding sidebars) — all configured there, not via the bridge.
 - Orientation modes are configured in App Studio (App configuration) per OS and device type — see Orientation section below.
+- Swipe navigation can be toggled at runtime via the **Android-scoped** bridge command (`median.android.swipeGestures.*`); **pinch-to-zoom** (disabled by default) and **pull-to-refresh** are configured per-platform in App Studio, not via the bridge.
 
 ## Quick Reference
 
@@ -50,6 +54,9 @@ Don't use for:
 | Return to normal sleep behavior | `median.screen.keepScreenNormal();` |
 | Android: enter fullscreen | `median.android.screen.fullScreen();` |
 | Android: exit fullscreen | `median.android.screen.normal();` |
+| Android: enable swipe navigation | `median.android.swipeGestures.enable();` |
+| Android: disable swipe navigation | `median.android.swipeGestures.disable();` |
+| Pinch-to-zoom / pull-to-refresh | **No bridge command** — App Studio configuration (pinch-to-zoom disabled by default) |
 | Lock orientation | **No bridge command** — App Studio configuration only (Auto-Rotation / Fixed Portrait / Fixed Landscape) |
 | Force dark scheme | `median.screen.setColorScheme("dark");` |
 | Force light scheme | `median.screen.setColorScheme("light");` |
@@ -108,6 +115,17 @@ function keyboardToggle(data) {
 median.keyboard.listen(keyboardToggle);
 ```
 
+### Swipe gestures (Android) — `median.android.swipeGestures.enable` / `disable`
+
+```javascript
+median.android.swipeGestures.enable();
+median.android.swipeGestures.disable();
+```
+
+- Swipe gestures let users navigate **backward and forward through their browsing history** with horizontal swipes; toggle them at runtime to dynamically enable or disable navigation based on your app's current state or specific view requirements.
+- On Android, **visual arrow indicators** appear on screen when a previous or next page is available in the history stack.
+- Related gesture settings that are App Studio **configuration only** (no bridge command): **Pinch-to-Zoom** — disabled by default; enable for content that needs fine-grained zooming (product images, maps, data-dense pages) — and **Pull-to-Refresh** — configurable independently for iOS and Android.
+
 ### Screen orientation — config-only, NO bridge command
 
 There is **no bridge command** to lock or change orientation at runtime. Screen orientation is controlled exclusively in **App Studio app configuration**, with modes: **Auto-Rotation**, **Fixed Portrait**, **Fixed Landscape** — customizable per Operating System (iOS/Android) and Device Type (Phone/Tablet).
@@ -139,12 +157,23 @@ Recommend CSS variables for light/dark palettes so one `prefers-color-scheme` sw
 - **Full screen + forms on Android.** The keyboard overlays content in fullscreen mode and can break form inputs — exit fullscreen (`normal()`) on form pages or toggle it from the keyboard listener.
 - **iOS fullscreen is not bridge-controlled.** `median.android.screen.*` is Android-only; iOS landscape fullscreen is an Interface-tab setting.
 - **Orientation cannot be changed from JS.** No bridge command exists — App Studio configuration only, and Fixed Portrait on iPad kills multi-tasking.
+- **Swipe-gesture toggling is Android-scoped.** The documented runtime commands are `median.android.swipeGestures.enable()` / `.disable()`; there is no documented iOS equivalent, and pinch-to-zoom / pull-to-refresh have no bridge commands — App Studio configuration only.
 - **`setColorScheme` takes a bare string.** `median.screen.setColorScheme("dark")`, not `setColorScheme({ scheme: "dark" })`.
 - **No callbacks or promises documented** for any screen API in this skill — don't `.then()` or `await` them.
 - **Outside the app there is no `median` object.** Guard with the UA check or `Median.isNativeApp()` (NPM) so the same code runs on the mobile web.
+
+## Verification
+
+1. Brightness: `setBrightness({'brightness':'0.2'})` visibly dims the screen; `'default'` restores the system level; with `restoreOnNavigation: true` the previous level returns after a page navigation.
+2. Keep-awake: call `keepScreenOn()`, leave the device idle past its normal lock timeout — the screen stays on; `keepScreenNormal()` restores normal sleep behavior.
+3. Fullscreen: `fullScreen()` hides the Android status/navigation bars and `normal()` restores them; with the keyboard-listener toggle wired up, exiting fullscreen when the keyboard shows keeps form inputs visible.
+4. Dark mode: `setColorScheme("dark")` flips the native menus and the page's `prefers-color-scheme`; the page's `data-color-scheme-option` reflects the mode; `resetColorScheme()` returns to the app-config default.
+5. Swipe gestures (Android): after `enable()`, swiping horizontally navigates back/forward through history and the arrow indicators appear when a previous/next page exists; after `disable()`, the same swipes no longer navigate.
 
 ## References
 
 - [references/brightness-keepawake-fullscreen.md](references/brightness-keepawake-fullscreen.md) — brightness params + typo note, keepScreenOn, Android fullscreen + keyboard fix
 - [references/orientation-dark-mode.md](references/orientation-dark-mode.md) — orientation config modes, dark-mode scheme calls, `prefers-color-scheme` and `data-color-scheme-option`
-- Official docs: [Screen Brightness](https://docs.median.co/docs/screen-brightness) · [Keep Screen On](https://docs.median.co/docs/keep-screen-on) · [Full Screen](https://docs.median.co/docs/full-screen) · [Screen Orientation](https://docs.median.co/docs/screen-orientation) · [Dark Mode](https://docs.median.co/docs/dark-mode)
+- [Repo recipes](../../recipes.md) — keyboard-aware forms on Android (keyboard listener + fullscreen toggle)
+- Official docs: [Screen Brightness](https://docs.median.co/docs/screen-brightness) · [Keep Screen On](https://docs.median.co/docs/keep-screen-on) · [Full Screen](https://docs.median.co/docs/full-screen) · [Screen Orientation](https://docs.median.co/docs/screen-orientation) · [Dark Mode](https://docs.median.co/docs/dark-mode) · [Native Gestures and Interactions](https://docs.median.co/docs/swipe-gestures)
+- Live demo pages: [Swipe Gestures](https://median.dev/swipe-gestures/)

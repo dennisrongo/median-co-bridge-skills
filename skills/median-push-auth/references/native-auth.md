@@ -189,13 +189,82 @@ Platform notes:
 
 Demo: https://median.dev/social-login/
 
-## Face ID / Touch ID / Android Biometric
+## Face ID / Touch ID / Android Biometric (secret storage)
 
-The biometric overview page (https://docs.median.co/docs/auth.md) is a router — implementation details live on the `apple-face-id-touch-id` and `android-biometric-auth` subpages (fetch them before implementing):
+One plugin ("Face ID / TouchID Android Biometrics") covers both platforms. It stores a secret — a single string defined by the website developer (credentials JSON, authentication token, or any other login data) — in hardware-backed storage (iOS Keychain; Android cryptographic hardware) so it cannot be retrieved without biometric authentication. Saving the secret does not require user interaction.
+
+Flow (verbatim from both subpages): check biometric availability → after login, save a secret → on future visits, if a saved secret exists, prompt biometric authentication → use the recovered secret to log the user in or populate the login form.
+
+The overview page (https://docs.median.co/docs/auth.md) is a router; the full API lives on the subpages (both fetched and verified):
 - https://docs.median.co/docs/apple-face-id-touch-id.md
 - https://docs.median.co/docs/android-biometric-auth.md
 
-Bridge call cited on the overview: `median.auth.authenticate()` (prompt biometric authentication). Biometrics cannot be tested on iOS/Android simulators.
+*(Note: an earlier revision of this skill cited `median.auth.authenticate()` from the docs overview — that call does not appear anywhere in the current docs; the API surface is `status`/`save`/`get`/`delete`.)*
+
+Demo: https://median.dev/auth/
+
+### median.auth.status()
+```javascript
+median.auth.status({
+  'minimumAndroidBiometric': 'strong' | 'weak',  // optional, default 'strong' (Android)
+  'callbackFunction': CALLBACK
+});
+```
+The app returns a promise, or executes CALLBACK, with:
+- `hasTouchId`: `true` | `false` — iOS: "Indicates if the device is running iOS 9+ and there are fingerprints enrolled, or FaceID is enabled" (covers Face ID too); Android: `true` on devices with fingerprints enrolled
+- `biometryType`: `'touchId'`, `'faceId'`, or `'none'` — "populated on iOS only to differentiate between TouchID and FaceID"
+- `hasSecret`: `true` | `false`
+
+### median.auth.save()
+```javascript
+median.auth.save({
+  'secret': secret,                              // single string: JSON credentials, auth token, etc.
+  'minimumAndroidBiometric': 'strong' | 'weak',  // optional, default 'strong' (Android)
+  'callbackFunction': CALLBACK                   // iOS docs: optional, "called after the save operation with a success parameter"
+});
+```
+Android returns a promise, or executes CALLBACK, with an object with a `success` field. Typically called after checking `status()` first.
+
+### median.auth.get()
+```javascript
+median.auth.get({
+  'callbackFunction': CALLBACK,                  // iOS docs: required
+  'minimumAndroidBiometric': 'strong' | 'weak',  // optional, default 'strong' (Android)
+  'prompt': 'PROMPT',                            // optional; "Prompt is only available for iOS and it has been included above to ensure cross-platform compatibility"
+  'callbackOnCancel': INTEGER                    // optional
+});
+```
+The app returns a promise, or executes CALLBACK, with:
+- `success`: `true` | `false`
+- `error`: provided success is `false` (see error codes below)
+- `secret`: the previously stored secret
+
+`callbackOnCancel`: "If set to 1 and the user cancels the authentication, the callback will be run with `success=false`, `error=userCanceled`. If `callbackOnCancel` is not set (or set to 0), the callback will not be run."
+
+### median.auth.delete()
+```javascript
+median.auth.delete({'callbackFunction': CALLBACK});
+```
+The app returns a promise, or executes CALLBACK, with `success` (`true` | `false`) and `error` (provided success is false). Docs pattern: "delete secret if credentials are incorrect" — if the retrieved secret fails to log the user in, delete it and allow manual login.
+
+### Error codes (verbatim)
+"In general, you will only need to handle authenticationFailed in the 'get secret' request."
+- `duplicateItem`: Secret already exists
+- `itemNotFound`: No secret saved
+- `authenticationFailed`: Biometric check failed
+- `genericError`: Unexpected failure
+- `userCanceled`: User canceled the auth prompt
+- `unimplemented`: Plugin not supported
+
+### Docs quirks flagged
+- The iOS page marks `callbackFunction` "required" for `status` and `get` while the Android page marks it "optional if callback is used rather than promise" — Android documents promise returns for every call; when targeting iOS, use the callback form for `status`/`get` per the iOS page.
+- The iOS page's "Promise method" examples are syntactically malformed — they end `median.auth.status().then(function (result) { ... }` missing the closing `);` (preserved as a docs artifact; write your own promise calls with correct syntax).
+
+### Whitelist domains
+"By default, any page loaded in your app will be able to use Median JavaScript Bridge to retrieve secrets." If domains you do not control can load in your app, whitelist yours: App Studio → Native Plugins → Settings for the Face ID/TouchID Android Biometrics plugin. "Regular expressions are supported to allow wildcards in the URL."
+
+### Testing
+Physical devices recommended ("as well as older models or more restricted device configurations" — MDM may disable biometrics). Appetize simulators also work: open the demo page in the simulator, click the Face ID button (iOS) / Fingerprint ID button (Android) to enable biometrics, log in with credentials, then use the biometric login button without re-entering them.
 
 ## Passkeys / WebAuthn
 
@@ -225,6 +294,8 @@ Demo: https://median.dev/passkey
 
 - https://docs.median.co/docs/authentication.md
 - https://docs.median.co/docs/auth.md
+- https://docs.median.co/docs/apple-face-id-touch-id.md
+- https://docs.median.co/docs/android-biometric-auth.md
 - https://docs.median.co/docs/clerk.md
 - https://docs.median.co/docs/auth0.md
 - https://docs.median.co/docs/social-login.md

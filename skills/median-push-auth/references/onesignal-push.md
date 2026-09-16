@@ -167,6 +167,41 @@ median.onesignal.enableForegroundNotifications(false);  // suppress (default)
 
 - Callable from any page; takes effect immediately, active for the current session, no rebuild needed. A build-time default can be set in App Studio (Native Plugins > OneSignal); the runtime method overrides it.
 
+## In-app messages (median.onesignal.iam.*)
+
+OneSignal in-app messages (IAM): rich UI panels shown inside the app without requiring the push permission prompt. Designed entirely in OneSignal's dashboard (HTML Composer); the bridge drives triggers, pause/resume, and click handling. Source: https://docs.median.co/docs/in-app-messages.md
+
+```javascript
+// Trigger management
+median.onesignal.iam.addTrigger({ key: "value" });
+median.onesignal.iam.addTriggers({ key1: "value1", key2: "value2" });
+median.onesignal.iam.removeTriggerForKey("key");
+median.onesignal.iam.getTriggerValueForKey("key");
+
+// Pause and resume
+median.onesignal.iam.pauseInAppMessages();
+median.onesignal.iam.resumeInAppMessages();
+
+// Click handler
+median.onesignal.iam.setInAppMessageClickHandler("yourHandlerFunctionName");
+```
+
+| Call | Argument | Description |
+| --- | --- | --- |
+| `addTrigger` | `{ key: "value" }` | Add a single trigger; the dashboard-configured message displays when its trigger conditions match |
+| `addTriggers` | `{ key1: "value1", key2: "value2" }` | Add multiple triggers at once |
+| `removeTriggerForKey` | `"key"` | Remove a trigger by key |
+| `getTriggerValueForKey` | `"key"` | Retrieve the current value of a trigger |
+| `pauseInAppMessages` | — | Stop showing in-app messages (e.g. during checkout, video playback) |
+| `resumeInAppMessages` | — | Resume showing in-app messages |
+| `setInAppMessageClickHandler` | `"yourHandlerFunctionName"` (global fn name) | Runs when the user clicks an action button inside an IAM; called with the click-event data |
+
+- IAMs display only while the user is actively using the app (unlike push).
+- The OneSignal SDK delivers IAMs only after the user granted push notification permission — despite IAMs not needing the prompt themselves.
+- Android virtual simulators cannot display IAMs (physical device required); iOS works on physical devices and the iOS simulator.
+- The docs describe pause as "temporarily suppress" but do not document whether the paused state survives an app restart — verify on-device.
+- Soft-prompt pattern: an IAM with "Allow" → `median.onesignal.register()` / "Maybe later" → dismiss (see Permission & consent flow above).
+
 ## Programmatic notifications (OneSignal REST API — server-side)
 
 NOT a JS bridge API — sent from your backend. Endpoint: `POST https://api.onesignal.com/notifications` with header `Authorization: Key ***`.
@@ -222,3 +257,4 @@ REST API sound fields: `"ios_sound": "custom_sound_1.caf"`, `"android_channel_id
 - https://docs.median.co/docs/notification-customization.md
 - https://docs.median.co/docs/handling-notifications-taps.md
 - https://docs.median.co/docs/foreground-notifications.md
+- https://docs.median.co/docs/in-app-messages.md

@@ -90,3 +90,61 @@ function median_device_info(deviceInfo) { console.log(deviceInfo); }
 median.run.deviceInfo();
 var deviceInfo = await median.deviceInfo();
 ```
+
+## Enforcing a minimum app version
+
+Source: https://docs.median.co/docs/device-info (Advanced example)
+
+When deploying new features or critical security updates, retrieve the app version via `deviceInfo` and redirect users below your required threshold to an "Update Required" page. Place this script in your site's `<head>` (SemVer logic, verbatim from the docs):
+
+```html
+<script>
+  /**
+   * Configuration for Version Enforcement
+   */
+  const MIN_APP_VERSION = "2.3.0";
+  const REDIRECT_URL = "/update-required.html";
+
+  /**
+   * Compares two version strings (e.g., "2.1.0" vs "2.3.0").
+   * Returns true if the current version is lower than the minimum.
+   */
+  function isVersionLower(current, minimum) {
+    const c = current.split(".").map(Number);
+    const m = minimum.split(".").map(Number);
+
+    for (let i = 0; i < Math.max(c.length, m.length); i++) {
+      const cv = c[i] || 0;
+      const mv = m[i] || 0;
+      if (cv < mv) return true;
+      if (cv > mv) return false;
+    }
+    return false;
+  }
+
+  /**
+   * Evaluates the deviceInfo object provided by Median.
+   */
+  function handleVersionCheck(deviceInfo) {
+    if (deviceInfo && deviceInfo.appVersion) {
+      if (isVersionLower(deviceInfo.appVersion, MIN_APP_VERSION)) {
+        // Redirect to a landing page with App Store/Play Store links
+        window.location.replace(REDIRECT_URL);
+      }
+    }
+  }
+
+  /**
+   * Median Device Info Callback
+   * This function is automatically triggered by Median once device data is retrieved.
+   */
+  function median_device_info(deviceInfo) {
+    handleVersionCheck(deviceInfo);
+  }
+</script>
+```
+
+- **Robust version comparison:** version strings aren't simple numbers (`2.10.0` is newer than `2.9.0`, but a plain numerical comparison suggests otherwise) — `isVersionLower` splits each string into an array of integers so each segment compares accurately.
+- **`window.location.replace()`:** removes the outdated page from browser history so the user can't navigate back to app content without updating (no redirect loop).
+- **Promise alternative:** call `median.deviceInfo().then(handleVersionCheck)` so the version check runs regardless of when the script loads.
+- **UX:** the `update-required.html` page should explain why the update is necessary and deep-link to the Apple App Store and Google Play Store.

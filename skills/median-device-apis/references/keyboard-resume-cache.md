@@ -21,7 +21,7 @@ median.keyboard.showAccessoryView(true|false)  // iOS only
 |---|---|---|
 | `callback` | function | Optional for `info` |
 | listener | function | For `listen`; pass `""` to stop |
-| boolean | boolean | For `showAccessoryView` |
+| `true`/`false` literal | boolean | For `showAccessoryView` — `true` shows, `false` hides the iOS accessory view; the docs pass bare literals and document no parameter name |
 
 ### Response shape (both `info` and each `listen` event — verbatim)
 

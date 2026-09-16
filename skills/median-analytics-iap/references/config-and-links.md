@@ -99,9 +99,9 @@ Key facts (verbatim where quoted):
 - Median supports private/custom plugins (contact sales).
 - Custom plugin development can integrate any third-party SDK into the App Studio build platform.
 
-## In-App Purchases (router pointer)
+## In-App Purchases
 
-The `iap` overview page does not carry the bridge API — the implementation detail lives on:
+The `iap` overview page does not carry the bridge API — the full bridge API (`median.iap.*` and its callbacks) is documented in `iap.md` (this folder); the implementation detail lives on:
 - Apple IAP (StoreKit): https://docs.median.co/docs/apple-iap.md
 - Google IAP (Play Billing): https://docs.median.co/docs/google-iap.md
 

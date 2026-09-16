@@ -88,10 +88,10 @@ median.storage.app.deleteAll({ statuscallback: statcb })
 
 | Call | Param | Type | Required | Description |
 |---|---|---|---|---|
-| set | `key` | String | Required | |
-| set | `value` | String | Required | |
+| set | `key` | String | Required | The key to store the value under |
+| set | `value` | String | Required | The value to persist |
 | set | `statuscallback` | Function | No | Receives `{ status }` |
-| get | `key` | String | Required | |
+| get | `key` | String | Required | The key to retrieve |
 | get | `callback` | Function | Required for callback style | Receives `result.data` and `result.status` |
 
 ### Response shape
